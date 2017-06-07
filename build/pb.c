@@ -511,17 +511,18 @@ static const struct luaL_Reg _c_iostring_m [] = {
     {NULL, NULL}
 };
 
-LUALIB_API luaopen_pb (lua_State *L)
+LUALIB_API void luaopen_pb (lua_State *L)
 {
     luaL_newmetatable(L, IOSTRING_META);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
     luaL_setfuncs(L, _c_iostring_m, 0);
 
-    lua_newtable(L);
-    luaL_setfuncs(L, _pb, 0);
-    lua_pushvalue(L, -1);
-    lua_setglobal(L, "pb");
-
-    return 1;
+#if LUA_VERSION_NUM == 503
+	luaL_newlib(L, _pb);
+	lua_setglobal(L, "pb");
+#else
+	luaL_register(L, "pb", _pb);
+	lua_pop(L, 1);
+#endif
 }
