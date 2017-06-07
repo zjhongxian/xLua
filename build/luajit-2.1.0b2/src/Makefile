@@ -168,9 +168,9 @@ else
   endif
   # Use Clang for OSX host.
   # XXX:remove this when build Android on OSX (mark by u0u0)
-  ifeq (Darwin,$(HOST_SYS))
-    DEFAULT_CC= clang
-  endif
+  #ifeq (Darwin,$(HOST_SYS))
+  #  DEFAULT_CC= clang
+  #endif
 endif
 
 ##############################################################################
