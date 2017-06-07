@@ -1,4 +1,4 @@
-/*
+﻿/*
  * =====================================================================================
  *
  *      Filename:  pb.c
@@ -19,6 +19,9 @@
  *
  * =====================================================================================
  */
+
+#define LUA_LIB
+
 #include <stdint.h>
 #include <string.h>
 
@@ -508,7 +511,7 @@ static const struct luaL_Reg _c_iostring_m [] = {
     {NULL, NULL}
 };
 
-int luaopen_pb (lua_State *L)
+LUALIB_API luaopen_pb (lua_State *L)
 {
     luaL_newmetatable(L, IOSTRING_META);
     lua_pushvalue(L, -1);

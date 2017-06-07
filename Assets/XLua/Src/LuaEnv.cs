@@ -71,6 +71,7 @@ namespace XLua
                 LuaAPI.luaopen_xlua(rawL);
                 LuaAPI.luaopen_i64lib(rawL);
                 LuaAPI.luaopen_perflib(rawL);
+                LuaAPI.luaopen_pb(rawL);
 
                 translator = new ObjectTranslator(this, rawL);
                 translator.createFunctionMetatable(rawL);
