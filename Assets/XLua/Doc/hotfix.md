@@ -10,6 +10,8 @@
 
 ## 内嵌模式
 
+注意：该模式慎用，一般仅有经验人士调试使用，因为这模式依赖cecil，可能会和unity本身或者一些第三方库的的cecil版本冲突。有的人可能发现unity5.5以上的版本会提示“WARNING: The runtime version supported by this application is unavailable.”，这是由于注入工具是.net3.5编译导致，目前为止没发现会导致问题。切换到嵌入模式没这提示，但弊大于利。
+
 默认通过小工具执行代码注入，也可以采用内嵌到编辑器的方式，定义INJECT_WITHOUT_TOOL宏即可。
 
 定义INJECT_WITHOUT_TOOL宏后，热补丁特性依赖Cecil，添加HOTFIX_ENABLE宏之后，可能会报找不到Cecil。这时你需要到Unity安装目录下找到Mono.Cecil.dll，Mono.Cecil.Pdb.dll，Mono.Cecil.Mdb.dll，拷贝到项目里头。
@@ -43,6 +45,12 @@ xlua.private_accessible(class)
 
 * 描述          ： 让一个类的私有字段，属性，方法等可用
 * class         ： 同xlua.hotfix的class参数
+
+util.hotfix_ex(class, method_name, fix)
+
+* 描述         ： xlua.hotfix的增强版本，可以在fix函数里头执行原来的函数，缺点是fix的执行会略慢。
+* method_name  ： 方法名；
+* fix          ： 用来替换C#方法的lua function。
 
 ## 标识要热更新的类型
 
@@ -79,12 +87,87 @@ public static class HotfixCfg
 
 Hotfix标签可以设置一些标志位对生成代码及插桩定制化
 
-* Stateless       ：Stateless和Stateful的区别请看下下节
-* Stateful        ：同上
-* ValueTypeBoxing ：值类型的适配delegate会收敛到object，好处是代码量更少，不好的是值类型会产生boxing及gc，适用于对安装包敏感的业务
-* IgnoreProperty  ：不对属性注入及生成适配代码
-* IgnoreNotPublic ：不对非public的方法注入及生成适配代码
-* Inline          ：不生成适配delegate，直接在函数体注入处理代码
+* Stateless
+
+Stateless和Stateful的区别请看下下节。
+
+* Stateful
+
+同上。
+
+* ValueTypeBoxing
+
+值类型的适配delegate会收敛到object，好处是代码量更少，不好的是值类型会产生boxing及gc，适用于对text段敏感的业务。
+
+* IgnoreProperty
+
+不对属性注入及生成适配代码，一般而言，大多数属性的实现都很简单，出错几率比较小，建议不注入。
+
+* IgnoreNotPublic
+
+不对非public的方法注入及生成适配代码。除了像MonoBehaviour那种会被反射调用的私有方法必须得注入，其它仅被本类调用的非public方法可以不注入，只不过修复时会工作量稍大，所有引用到这个函数的public方法都要重写。
+
+* Inline
+
+不生成适配delegate，直接在函数体注入处理代码。
+
+* IntKey
+
+不生成静态字段，而是把所有注入点放到一个数组集中管理。
+
+好处：对text段影响小。
+
+坏处：使用不像默认方式那么方便，需要通过id来指明hotfix哪个函数，而这个id是代码注入工具时分配的，函数到id的映射会保存在Gen/Resources/hotfix_id_map.lua.txt，并且自动加时间戳备份到hotfix_id_map.lua.txt同级目录，发布手机版本后请妥善保存该文件。
+
+该文件的格式大概如下（注意：该文件仅IntKey模式使用，当你没类型指定IntKey模式注入，该文件只返回个空表）：
+
+~~~lua
+return {
+    ["HotfixTest"] = {
+        [".ctor"] = {
+            5
+        },
+        ["Start"] = {
+            6
+        },
+        ["Update"] = {
+            7
+        },
+        ["FixedUpdate"] = {
+            8
+        },
+        ["Add"] = {
+            9,10
+        },
+        ["OnGUI"] = {
+            11
+        },
+    },
+}
+~~~
+
+想要替换HotfixTest的Update函数，你得
+
+~~~lua
+CS.XLua.HotfixDelegateBridge.Set(7, func)
+~~~
+
+如果是重载函数，将会一个函数名对应多个id，比如上面的Add函数。
+
+能不能自动化一些呢？可以，xlua.util提供了auto_id_map函数，执行一次后你就可以像以前那样直接用类，方法名去指明修补的函数。
+
+~~~lua
+(require 'xlua.util').auto_id_map()
+xlua.hotfix(CS.HotfixTest, 'Update', function(self)
+		self.tick = self.tick + 1
+		if (self.tick % 50) == 0 then
+			print('<<<<<<<<Update in lua, tick = ' .. self.tick)
+		end
+	end)
+~~~
+
+前提是hotfix_id_map.lua.txt放到可以通过require 'hotfix_id_map'引用到的地方。
+
 
 ## 使用建议
 
